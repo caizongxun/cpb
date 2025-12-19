@@ -1,0 +1,45 @@
+# Core Dependencies
+numpy>=1.24.0
+pandas>=2.0.0
+scipy>=1.10.0
+
+# Binance API
+python-binance>=1.0.17
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# PyTorch + CUDA
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+
+# Machine Learning
+scikit-learn>=1.3.0
+tensorflow>=2.13.0  # Optional, for fallback
+
+# Data Processing & Feature Engineering
+ta>=0.10.2  # Technical Analysis
+finta>=1.3  # Financial Technical Analysis
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+plotly>=5.14.0
+
+# Model Management
+joblib>=1.3.0
+pydantic>=2.0.0
+
+# Hugging Face Integration (Optional)
+huggingface-hub>=0.18.0
+datasets>=2.14.0
+
+# Utilities
+tqdm>=4.66.0
+pyyaml>=6.0
+loguru>=0.7.0
+
+# Testing & Development
+pytest>=7.4.0
+ipython>=8.14.0
+jupyter>=1.0.0
