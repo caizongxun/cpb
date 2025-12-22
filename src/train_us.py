@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import torch
 from dotenv import load_dotenv
+import subprocess
 
 # 導入自訂模組
 sys.path.insert(0, str(Path(__file__).parent))
@@ -24,6 +25,70 @@ logger = logging.getLogger(__name__)
 
 # 載入環境變數
 load_dotenv()
+
+class VersionChecker:
+    """版本檢查器 - 自動檢測環境版本"""
+    
+    @staticmethod
+    def get_git_info():
+        """獲取 Git 資訊"""
+        try:
+            commit_sha = subprocess.check_output(
+                ['git', 'rev-parse', '--short', 'HEAD'],
+                cwd=Path(__file__).parent.parent,
+                stderr=subprocess.DEVNULL
+            ).decode('utf-8').strip()
+            
+            branch = subprocess.check_output(
+                ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+                cwd=Path(__file__).parent.parent,
+                stderr=subprocess.DEVNULL
+            ).decode('utf-8').strip()
+            
+            return commit_sha, branch
+        except:
+            return 'unknown', 'unknown'
+    
+    @staticmethod
+    def get_all_versions():
+        """獲取所有版本資訊"""
+        commit_sha, branch = VersionChecker.get_git_info()
+        
+        versions = {
+            'python': f"{sys.version.split()[0]}",
+            'pytorch': torch.__version__,
+            'pandas': pd.__version__,
+            'numpy': np.__version__,
+            'gpu_available': torch.cuda.is_available(),
+            'gpu_name': torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'N/A',
+            'git_branch': branch,
+            'git_commit': commit_sha,
+            'timestamp': datetime.utcnow().isoformat()
+        }
+        
+        return versions
+    
+    @staticmethod
+    def print_versions():
+        """美化打印版本資訊"""
+        versions = VersionChecker.get_all_versions()
+        
+        print("\n" + "="*70)
+        print(" 環境版本資訊".center(70))
+        print("="*70)
+        print(f"Python 版本:          {versions['python']}")
+        print(f"PyTorch 版本:         {versions['pytorch']}")
+        print(f"Pandas 版本:          {versions['pandas']}")
+        print(f"NumPy 版本:           {versions['numpy']}")
+        print(f"GPU 可用:             {'✓ 是' if versions['gpu_available'] else '✗ 否'}")
+        if versions['gpu_available']:
+            print(f"GPU 型號:             {versions['gpu_name']}")
+        print(f"Git 分支:             {versions['git_branch']}")
+        print(f"Git 提交:             {versions['git_commit']}")
+        print(f"執行時間:             {versions['timestamp']}")
+        print("="*70 + "\n")
+        
+        return versions
 
 class CryptoMLPipelineUS:
     """完整的加密貨幣ML pipeline - Binance US 版本（無地區限制）"""
@@ -64,7 +129,7 @@ class CryptoMLPipelineUS:
             logger.info("✓ 此 API 無地區限制，無需認證密鑰")
             
             collector = BinanceUSDataCollector()
-            metadata = collector.collect_all_coins(days_back=days_back)
+            metadata = collector.collect_all_coins(min_klines=1000)
             
             logger.info(f"✓ 成功採集 {len(metadata['coins'])} 個幣種")
             return list(raw_data_dir.glob('*.csv'))
@@ -75,7 +140,7 @@ class CryptoMLPipelineUS:
     def phase2_feature_engineering(self, csv_files):
         """Phase 2: 特徵工程"""
         logger.info("\n" + "="*60)
-        logger.info("Phase 2: 特徵工程 (35+ 技術指標)")
+        logger.info("Phase 2: 特徵工程 (30+ 技術指標)")
         logger.info("="*60)
         
         processed_data = {}
@@ -90,7 +155,7 @@ class CryptoMLPipelineUS:
                 df['timestamp'] = pd.to_datetime(df['timestamp'])
                 
                 if len(df) < 1000:
-                    logger.warning(f"跳過 {csv_file.name}: 資料不足 ({len(df)} < 1000)")
+                    logger.warning(f"跳過 {csv_file.name}: 數據不足 ({len(df)} < 1000)")
                     continue
                 
                 # 特徵工程
@@ -218,11 +283,11 @@ class CryptoMLPipelineUS:
     
     def run_full_pipeline(self, days_back=30, epochs=150, skip_collection=False):
         """執行完整pipeline"""
+        # 打印版本資訊
+        versions = VersionChecker.print_versions()
+        
         logger.info("\n" + "#"*60)
-        logger.info("# 開始執行完整ML Pipeline - Binance US 版本")
-        logger.info("#"*60)
-        logger.info(f"# 日週: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC")
-        logger.info(f"# GPU: {torch.cuda.is_available()} - 使用 {torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU'}")
+        logger.info("# 開始執行完整ML Pipeline - Binance US 版本".center(60))
         logger.info("#"*60)
         
         try:
@@ -239,7 +304,7 @@ class CryptoMLPipelineUS:
             results_df = self.phase4_evaluation(results)
             
             logger.info("\n" + "#"*60)
-            logger.info("# Pipeline執行完成！")
+            logger.info("# Pipeline執行完成".center(60))
             logger.info("#"*60)
             
             return results_df
