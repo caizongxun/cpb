@@ -9,7 +9,7 @@ import ta  # Technical Analysis library
 logger = logging.getLogger(__name__)
 
 class FeatureEngineer:
-    """超过35+技术指标特征工程"""
+    """超过35+技术指標特征工程"""
     
     def __init__(self, lookback_period=200):
         """初始化特征工程师"""
@@ -19,10 +19,10 @@ class FeatureEngineer:
         self.feature_names = []
         
     def compute_indicators(self, df):
-        """计韶35+技术指标"""
+        """计算技术指標"""
         data = df.copy()
         
-        # 1. 价格与成交量 (5)
+        # 1. 價格與成交量 (5)
         data['price_change'] = data['close'].pct_change() * 100
         data['volume_change'] = data['volume'].pct_change() * 100
         data['hl2'] = (data['high'] + data['low']) / 2
@@ -64,10 +64,10 @@ class FeatureEngineer:
         data['bb_width'] = bb.bollinger_wband()
         data['bb_pband'] = bb.bollinger_pband()
         
-        # 9. 真实振幅 (1)
+        # 9. 真實振幅 (1)
         data['atr_14'] = ta.volatility.average_true_range(data['high'], data['low'], data['close'], window=14)
         
-        # 10. ADX指数 (3)
+        # 10. ADX指數 (3)
         adx = ta.trend.ADXIndicator(data['high'], data['low'], data['close'], window=14)
         data['adx_14'] = adx.adx()
         data['adx_di_plus'] = adx.adx_pos()
@@ -79,20 +79,17 @@ class FeatureEngineer:
         data['kc_middle'] = kc.keltner_channel_mband()
         data['kc_lower'] = kc.keltner_channel_lband()
         
-        # 12. 规一化ATR (1)
-        data['natr'] = ta.volatility.natr(data['high'], data['low'], data['close'], window=14)
-        
-        # 13. OBV (1)
+        # 12. OBV (1)
         data['obv'] = ta.volume.on_balance_volume(data['close'], data['volume'])
         
-        # 14. 资金流指数 (2)
+        # 13. 资金流指数 (2)
         data['cmf'] = ta.volume.chaikin_money_flow(data['high'], data['low'], data['close'], data['volume'], window=20)
         data['mfi'] = ta.volume.money_flow_index(data['high'], data['low'], data['close'], data['volume'], window=14)
         
-        # 15. 成交量价格沋 (1)
+        # 14. 成交量价格沋 (1)
         data['vpt'] = ta.volume.volume_price_trend(data['close'], data['volume'])
         
-        logger.info(f"超过35+技术指标成功")
+        logger.info(f"超过30+技术指標成功")
         return data
     
     def handle_missing_values(self, df):
@@ -100,7 +97,7 @@ class FeatureEngineer:
         # 前向填充，然后后向填充
         df = df.fillna(method='ffill')
         df = df.fillna(method='bfill')
-        # 仍有NaN则按0填充
+        # 仍有NaN则掉0填充
         df = df.fillna(0)
         return df
     
@@ -122,7 +119,7 @@ class FeatureEngineer:
             )
             to_drop = [column for column in upper_triangle.columns if any(upper_triangle[column] > 0.95)]
             selected_features = [col for col in numeric_cols if col not in to_drop]
-            logger.info(f"相关性筛选: 去除{len(to_drop)}个特征, 保留{len(selected_features)}个")
+            logger.info(f"相关性筛選: 去除{len(to_drop)}个特征, 保留{len(selected_features)}个")
         else:
             selected_features = numeric_cols
         
@@ -145,22 +142,22 @@ class FeatureEngineer:
         return feature_df
     
     def normalize_features(self, X_train, X_val, X_test, method='minmax'):
-        """标准化特征"""
+        """正見化特征"""
         if method == 'minmax':
             self.scaler = MinMaxScaler()
         else:
             self.scaler = StandardScaler()
         
-        # 仅在训练集上拟合scaler
+        # 僅在訓練集上括准scaler
         X_train_scaled = self.scaler.fit_transform(X_train)
         X_val_scaled = self.scaler.transform(X_val)
         X_test_scaled = self.scaler.transform(X_test)
         
-        logger.info(f"批量正常化: {method}")
+        logger.info(f"正見化: {method}")
         return X_train_scaled, X_val_scaled, X_test_scaled
     
     def create_sequences(self, X, y, lookback=60):
-        """为时间序列模型创建序列"""
+        """為時間序列模型創建序列"""
         X_seq, y_seq = [], []
         
         for i in range(len(X) - lookback):
@@ -170,8 +167,8 @@ class FeatureEngineer:
         return np.array(X_seq), np.array(y_seq)
     
     def process_dataframe(self, df, target_col='close', lookback=60, test_size=0.15, val_size=0.15):
-        """一体化数据处理流程"""
-        # 计算技术指标
+        """一体化數據處理流程"""
+        # 计算技术指標
         df = self.compute_indicators(df)
         
         # 处理缺失值
@@ -186,7 +183,7 @@ class FeatureEngineer:
         X = df[feature_cols].values
         y = df['target'].values
         
-        # 批量正常化
+        # 正見化
         X_train_idx = int(len(X) * (1 - test_size - val_size))
         X_val_idx = int(len(X) * (1 - test_size))
         
@@ -200,12 +197,12 @@ class FeatureEngineer:
         
         X_train_scaled, X_val_scaled, X_test_scaled = self.normalize_features(X_train, X_val, X_test, method='minmax')
         
-        # 创建时间序列
+        # 創建時間序列
         X_train_seq, y_train_seq = self.create_sequences(X_train_scaled, y_train, lookback)
         X_val_seq, y_val_seq = self.create_sequences(X_val_scaled, y_val, lookback)
         X_test_seq, y_test_seq = self.create_sequences(X_test_scaled, y_test, lookback)
         
-        logger.info(f"数据执行列成功: Train={len(X_train_seq)}, Val={len(X_val_seq)}, Test={len(X_test_seq)}")
+        logger.info(f"數據執行列成功: Train={len(X_train_seq)}, Val={len(X_val_seq)}, Test={len(X_test_seq)}")
         
         return {
             'X_train': X_train_seq,
@@ -224,4 +221,4 @@ if __name__ == '__main__':
     engineer = FeatureEngineer()
     # 例子: df = pd.read_csv('data/raw_data/BTCUSDT_1h.csv')
     # result = engineer.process_dataframe(df)
-    print("特征工程模块准备完毕")
+    print("特征工程模块應准就緒")
