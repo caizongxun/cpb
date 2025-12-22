@@ -67,7 +67,7 @@ class FeatureEngineer:
         # 9. 真實振幅 (1)
         data['atr_14'] = ta.volatility.average_true_range(data['high'], data['low'], data['close'], window=14)
         
-        # 10. ADX指數 (3)
+        # 10. ADX指数 (3)
         adx = ta.trend.ADXIndicator(data['high'], data['low'], data['close'], window=14)
         data['adx_14'] = adx.adx()
         data['adx_di_plus'] = adx.adx_pos()
@@ -89,23 +89,33 @@ class FeatureEngineer:
         # 14. 成交量价格沋 (1)
         data['vpt'] = ta.volume.volume_price_trend(data['close'], data['volume'])
         
-        logger.info(f"超过30+技术指標成功")
+        logger.info(f"超过30+技术指標計算完成")
         return data
     
     def handle_missing_values(self, df):
-        """处理缺失值"""
-        # 前向填充，然后后向填充
-        df = df.fillna(method='ffill')
-        df = df.fillna(method='bfill')
-        # 仍有NaN则掉0填充
+        """处理缺失值和无穷大值"""
+        # 先處理无穷大值
+        df = df.replace([np.inf, -np.inf], np.nan)
+        
+        # 前向填充 (ffill替代已弃用的fillna(method='ffill'))
+        df = df.ffill()
+        # 后向填充 (bfill替代已弃用的fillna(method='bfill'))
+        df = df.bfill()
+        # 仍有NaN则用 0 填充
         df = df.fillna(0)
+        
+        # 驗證沒有无穷大值
+        if np.any(np.isinf(df.values)):
+            logger.warning("仍有无穷大值，執行䧆外序列")
+            df = df.replace([np.inf, -np.inf], 0)
+        
         return df
     
     def select_features(self, df, method='correlation', n_features=30):
         """特征选择与降维"""
-        # 有效数值列
+        # 有效數值列
         numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-        # 视述帆上司不需要（作为不会被使用的批量数据）
+        # 鬏帆擦上司不需要（作为不会被使用的批量數据）
         if 'timestamp' in numeric_cols:
             numeric_cols.remove('timestamp')
         
@@ -142,11 +152,20 @@ class FeatureEngineer:
         return feature_df
     
     def normalize_features(self, X_train, X_val, X_test, method='minmax'):
-        """正見化特征"""
+        """正見化特征（處理无穷大值）"""
         if method == 'minmax':
             self.scaler = MinMaxScaler()
         else:
             self.scaler = StandardScaler()
+        
+        # 先型按列处理无穷大值
+        def clean_data(X):
+            X = np.nan_to_num(X, nan=0.0, posinf=0.0, neginf=0.0)
+            return X
+        
+        X_train = clean_data(X_train)
+        X_val = clean_data(X_val)
+        X_test = clean_data(X_test)
         
         # 僅在訓練集上括准scaler
         X_train_scaled = self.scaler.fit_transform(X_train)
@@ -171,7 +190,7 @@ class FeatureEngineer:
         # 计算技术指標
         df = self.compute_indicators(df)
         
-        # 处理缺失值
+        # 处理缺失值和无穷大值
         df = self.handle_missing_values(df)
         
         # 计算目标变量 (未来7天价格变化百分比)
